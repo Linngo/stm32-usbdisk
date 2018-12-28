@@ -1,0 +1,87 @@
+void zk_init(void)
+{
+  Rom_csH;
+  MOSIH;
+  Rom_sckH;
+}
+
+/*******************************************************************************/
+// Send data sub-pro (STM8,STM32等双向口)   SPI发送地址的时序算法               /
+/*******************************************************************************/
+
+ void Send_Byte(unsigned char out)
+  {	
+	unsigned char i=0;
+	
+	for(i=0;i<8;i++)
+	{
+	  Rom_sckL;  //字库芯片时钟置低
+	  if(((out<<i)&0x80)==0)
+	      MOSIL;   
+	  else
+	      MOSIH;
+	  Rom_sckH;
+      }
+   }
+ 
+/*******************************************************************************/
+// Get data sub-pro (STM8,STM32等双向口)    SPI接收点阵数据的算法               /
+/*******************************************************************************/
+  unsigned char Get_Byte(void)         
+  {
+	unsigned char i;
+	unsigned char read_dat;
+
+	Rom_sckH;
+	for(i=0;i<8;i++)
+	{
+		Rom_sckL;
+		read_dat=read_dat<<1;
+		if(MISO)				
+			read_dat|=0x01;
+		else
+			read_dat&=0xfe;
+		Rom_sckH;
+	}
+	return(read_dat);
+}
+/*******************************************************************************/
+//                    Send address sub-pro (STM8,STM32，51)                                     /
+/*******************************************************************************/
+void SPI_Address(unsigned char AddH,unsigned char AddM,unsigned char AddL) 
+{
+	Send_Byte(AddH);
+	Send_Byte(AddM);
+	Send_Byte(AddL);
+}
+/*******************************************************************************/
+//                    Get N bytes sub-pro  (STM8,STM32，51)                                    //
+/*******************************************************************************/
+//客户自己实现，从address地址读取len个字节的数据并存入到DZ_Data数组当中
+void  r_dat_bat(unsigned long adddress,unsigned long DataLen,unsigned char *pBuff)
+{
+	unsigned char i;
+  unsigned char addrHigh;
+  unsigned char addrMid;
+  unsigned char addrLow;
+  addrHigh=adddress>>16;
+  addrMid=adddress>>8;
+  addrLow=(unsigned char)adddress;
+  
+	Rom_csL;          //片选选中字库芯片
+	Send_Byte(0x03);	//普通读取首先送0X03,然后发送地址高八位addrHigh，中八位addrMid，低八位addrLow。
+	SPI_Address(addrHigh,addrMid,addrLow);	
+	for(i=0;i<DataLen;i++)
+	*(pBuff+i)=Get_Byte();
+	Rom_csH;
+}
+
+//客户自己实现，从address地址读取一个字节的数据并返回该数据
+u8 r_dat(u32 address){
+		u8 buff;
+		CS_L;
+		SendByte(address); 
+		buff = ReadByte();	
+		CS_H;
+	return  buff;	
+}
